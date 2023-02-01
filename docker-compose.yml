@@ -1,0 +1,43 @@
+version: "3.7"
+
+services:
+    api:
+        build: ./api
+        container_name:  api
+        restart: always
+        environment: 
+            - APP_NAME=FlaskApp
+            - POSTGRES_USER=invoice_app
+            - POSTGRES_PASSWORD=invoice_secret
+            - POSTGRES_DB=invoice
+        env_file:
+            ./api/.env
+        volumes:
+            - './api:/api'
+        expose:
+            - 8080
+        ports:
+          - 8080:8080
+
+    frontend:
+        build: ./frontend
+        container_name: frontend
+        restart: always
+        environment: 
+            - APP_NAME=VueApp
+        env_file:
+            ./frontend/.env
+        ports:
+            - "80:80"
+
+    db:
+      image: postgres:13.0-alpine
+      volumes:
+        - postgres_data:/var/lib/postgresql/data/
+      environment:
+        - POSTGRES_USER=invoice_app
+        - POSTGRES_PASSWORD=invoice_secret
+        - POSTGRES_DB=invoice
+
+volumes:
+  postgres_data:

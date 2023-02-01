@@ -1,8 +1,27 @@
 import uuid
-from flask import Flask, jsonify, request
+from flask import Flask, render_template, request, redirect, url_for
+import os
+from os.path import join, dirname, realpath
 from flask_cors import CORS
 
 
+# configuration
+DEBUG = True
+
+# instantiate the app
+app = Flask(__name__)
+app.config.from_object(__name__)
+
+# enable CORS
+CORS(app, resources={r'/*': {'origins': '*'}})
+
+# Upload folder
+UPLOAD_FOLDER = 'media/files'
+app.config['UPLOAD_FOLDER'] =  UPLOAD_FOLDER
+
+# setup .env use         
+
+# setup db connection
 BOOKS = [
     {
         'id': uuid.uuid4().hex,
@@ -25,15 +44,7 @@ BOOKS = [
 ]
 
 
-# configuration
-DEBUG = True
 
-# instantiate the app
-app = Flask(__name__)
-app.config.from_object(__name__)
-
-# enable CORS
-CORS(app, resources={r'/*': {'origins': '*'}})
 
 
 # sanity check route
@@ -41,13 +52,19 @@ CORS(app, resources={r'/*': {'origins': '*'}})
 def ping_pong():
     return jsonify('pong!')
 
+# csv upload route
+# Get the uploaded files
+@app.route("/upload-csv", methods=['POST'])
+def uploadFiles():
+      # get the uploaded file
+      uploaded_file = request.files['file']
+      if uploaded_file.filename != '':
+        # set the file path
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file.filename)
+        # save the file
+        uploaded_file.save(file_path)
+      return redirect(url_for('index'))
 
-def remove_book(book_id):
-    for book in BOOKS:
-        if book['id'] == book_id:
-            BOOKS.remove(book)
-            return True
-    return False
 
 
 @app.route('/books', methods=['GET', 'POST'])
@@ -87,4 +104,4 @@ def single_book(book_id):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')

@@ -1,31 +1,29 @@
-# Developing a Single Page App with Flask and Vue.js
+# Developing an invoicing app with Flask and Vue.js
 
-### Want to learn how to build this?
+## Local Run
 
-Check out the [post](https://testdriven.io/developing-a-single-page-app-with-flask-and-vuejs).
-
-## Want to use this project?
-
-1. Fork/Clone
-
-1. Run the server-side Flask app in one terminal window:
-
-    ```sh
-    $ cd server
-    $ python3.9 -m venv env
-    $ source env/bin/activate
-    (env)$ pip install -r requirements.txt
-    (env)$ python app.py
+1. Clone this repo
+2. Copy and update .env files in each folder by running:
+    ``` 
+    $ cp .env.dev .env 
     ```
 
-    Navigate to [http://localhost:5000](http://localhost:5000)
+1. Spin up both containers using docker-compose:
 
-1. Run the client-side Vue app in a different terminal window:
-
-    ```sh
-    $ cd client
-    $ npm install
-    $ npm run serve
+    ```
+    $ docker compose up
     ```
 
-    Navigate to [http://localhost:8080](http://localhost:8080)
+    Navigate to [http://localhost:5000](http://localhost:5000) to access the api docs/admin
+
+    Navigate to [http://localhost:8080](http://localhost:8080) to access the vue app
+
+4. A test Postgres db has already been setup, so zero work is required ther.
+
+## Production Deployment
+
+1. Github actions is setup to:
+    - Build from the master branch
+    - Fetch environment variables from AWS secrets keys (can be swapped out for any secrets manager)
+    - Build and push individual containers of both api and frontend folders to ECR(or docker hub)
+    - Finally deploy to an ec2 instance(or droplet)
