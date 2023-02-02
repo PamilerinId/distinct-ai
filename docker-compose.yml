@@ -14,22 +14,20 @@ services:
             ./api/.env
         volumes:
             - './api:/api'
-        expose:
-            - 8080
         ports:
-          - 8080:8080
-
+          - 5000:5000
+    
     frontend:
-        build: ./frontend
-        container_name: frontend
-        restart: always
-        environment: 
-            - APP_NAME=VueApp
-        env_file:
-            ./frontend/.env
-        ports:
-            - "80:80"
-
+      build: ./frontend
+      container_name: client
+      restart: always
+      env_file: ./frontend/.env
+      volumes:
+        - './frontend:/app'
+      expose:
+        - 8080
+      ports: 
+        - 8080:8080
     db:
       image: postgres:13.0-alpine
       volumes:
