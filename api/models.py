@@ -1,11 +1,17 @@
-from app import db
-from sqlalchemy.dialects.postgresql import DATE
+from flask_sqlalchemy import SQLAlchemy
 
+from sqlalchemy.dialects.postgresql import DATE
+import pandas as pd
+
+
+
+db = SQLAlchemy()
 
 class Billables(db.Model):
-    __tablename__ = 'results'
+    __tablename__ = 'billables'
 
-    employee_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer)
     billable_rate = db.Column(db.String())
     project = db.Column(db.String())
     date = db.Column(DATE)
@@ -16,3 +22,5 @@ class Billables(db.Model):
 
     def __repr__(self):
         return '<id {}>'.format(self.id)
+
+

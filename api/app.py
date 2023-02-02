@@ -5,15 +5,21 @@ import uuid
 from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
+from flask_migrate import Migrate
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
+import pandas as pd
 
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join('.env'))
 
-from weasyprint import HTML
+from flask_weasyprint import HTML, render_pdf
 
-from utils.utils import parseNsaveCSV, generatePdf
+# from .utils import parseNsaveCSV
+from models import db, Billables
+
+
+import random
+number = random.randint(1000,9999)
 
 
 # instantiate the app
@@ -21,7 +27,8 @@ app = Flask(__name__)
 # app.config.from_object(os.environ['APP_SETTINGS'])
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
-db = SQLAlchemy(app)
+db.init_app(app)
+migrate = Migrate(db)
 
 # enable CORS
 CORS(app, resources={r'/*': {'origins': '*'}})
@@ -31,6 +38,34 @@ UPLOAD_FOLDER = 'media/files'
 app.config['UPLOAD_FOLDER'] =  UPLOAD_FOLDER       
 
 # setup db connection
+def parseNsaveCSV(filePath):
+    # Column Names
+    col_names = ['employee_id', 'billable_rate', 'project', 'date', 'start_time', 'end_time']
+    # Use Pandas to parse the CSV file
+    csvData = pd.read_csv(filePath,names=col_names, header=0)
+    # Loop through the Rows
+    for i,row in csvData.iterrows():
+        # calculate billables
+        time_delta = datetime.strptime(row['end_time'], '%H:%M') - datetime.strptime(row['start_time'], '%H:%M')
+        csvData.at[i,'time_difference'] = time_delta
+        csvData.at[i,'total_cost'] = time_delta * row['billable_rate']
+
+        # save to db
+        billable = Billables(employee_id=row['employee_id'],
+                                billable_rate=row['billable_rate'],
+                                project=row['project'],
+                                date=row['date'],
+                                start_time=row['start_time'],
+                                end_time=row['end_time'],
+                                time_difference=row['time_difference'],
+                                total_cost=row['total_cost'],
+        )
+        db.session.add(billable)
+        db.session.commit()
+        print (f"billable with employee id {billable.employee_id} has been created successfully.")
+        print(i,row['employee_id'],row['billable_rate'],row['project'],row['date']
+                ,row['start_time'],row['end_time'],row['time_difference'], row['total_cost'])
+
 
 
 # sanity check route
@@ -41,7 +76,7 @@ def ping_pong():
 
 # csv upload route
 # Get the uploaded files
-@app.route("/generate-invoice", methods=['POST'])
+@app.route("/generate-invoice", methods=['GET','POST'])
 def generate_invoice():
     # get the uploaded file
     uploaded_file = request.files['file']
@@ -52,64 +87,18 @@ def generate_invoice():
         uploaded_file.save(file_path)
         # parse csv and update db
         try:
-            parseNsaveCSV(file_path)
+            parseNsaveCSV(uploaded_file)
+            billables_data = Billables.query.order_by(Billables.employee_id).all()
         except Exception as e:
             # error saving csv
             print(e)
         finally:
-            rendered = generatePdf()
-
-        # rendered = render_template('invoice.html',
-        #                         date = today,
-        #                         from_addr = from_addr,
-        #                         to_addr = to_addr,
-        #                         items = items,
-        #                         total = total,
-        #                         invoice_number = invoice_number,
-        #                         duedate = duedate)
-        html = HTML(string=rendered)
-        rendered_pdf = html.write_pdf('./media/invoice.pdf')
-    return send_file(
-                    './media/invoice.pdf'
-            )
-
-
-
-# @app.route('/books', methods=['GET', 'POST'])
-# def all_books():
-#     response_object = {'status': 'success'}
-#     if request.method == 'POST':
-#         post_data = request.get_json()
-#         BOOKS.append({
-#             'id': uuid.uuid4().hex,
-#             'title': post_data.get('title'),
-#             'author': post_data.get('author'),
-#             'read': post_data.get('read')
-#         })
-#         response_object['message'] = 'Book added!'
-#     else:
-#         response_object['books'] = BOOKS
-#     return jsonify(response_object)
-
-
-# @app.route('/books/<book_id>', methods=['PUT', 'DELETE'])
-# def single_book(book_id):
-#     response_object = {'status': 'success'}
-#     if request.method == 'PUT':
-#         post_data = request.get_json()
-#         remove_book(book_id)
-#         BOOKS.append({
-#             'id': uuid.uuid4().hex,
-#             'title': post_data.get('title'),
-#             'author': post_data.get('author'),
-#             'read': post_data.get('read')
-#         })
-#         response_object['message'] = 'Book updated!'
-#     if request.method == 'DELETE':
-#         remove_book(book_id)
-#         response_object['message'] = 'Book removed!'
-#     return jsonify(response_object)
-
+            rendered = render_template('invoice.html',
+                                    date = datetime.today().strftime('%Y-%m-%d'),
+                                    items = billables_data,
+                                    invoice_number = number)
+            html = HTML(string=rendered)
+    return render_pdf(html)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
